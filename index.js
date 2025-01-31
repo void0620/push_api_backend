@@ -1,70 +1,50 @@
 const express = require("express");
+const webpush = require("web-push");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const webPush = require("web-push");
 
 const app = express();
-const port = 3001;
+const port = 5000;
 
+// Middleware
 app.use(cors());
-
 app.use(bodyParser.json());
 
-// Generate VAPID keys (do this once and reuse the keys)
+// VAPID Keys (Generate using `npx web-push generate-vapid-keys`)
 const vapidKeys = {
   publicKey: "BI5gWL3u-paHcH32d1wSuQ24RtHV1P6YSk3tuH9aacnUmyrHrj5oZ7pNWJmYiUnqEuMM7OeX5smJRQ8vIXrXus4",
   privateKey: "chTa4lxWbYW8SQtvX69HhhUREx78bctdOgVYP9jJS14"
 }
 
-webPush.setVapidDetails(
-  "mailto: solsys.com",
+webpush.setVapidDetails(
+  "mailto:rymercadodev@gmail.com",
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
 
-// Store subscriptions for each user and room
-const userSubscriptions = {};
+// Store subscriptions (in-memory for now)
+let subscriptions = [];
 
-// Endpoint to get the public VAPID key
-app.get("/vapid-public-key", (req, res) => {
-  res.send({ publicKey: vapidKeys.publicKey });
-});
-
-// Endpoint to subscribe a user to a room
+// Subscribe endpoint
 app.post("/subscribe", (req, res) => {
-  const { userId, room, subscription } = req.body;
-
-  if (!userSubscriptions[userId]) {
-    userSubscriptions[userId] = {};
-  }
-
-  if (!userSubscriptions[userId][room]) {
-    userSubscriptions[userId][room] = [];
-  }
-
-  // Store subscription
-  userSubscriptions[userId][room].push(subscription);
-  res.status(201).send({ message: `Subscribed to ${room} successfully!` });
+  const subscription = req.body;
+  subscriptions.push(subscription);
+  res.status(201).json({ message: "Subscribed successfully!" });
 });
 
-// Endpoint to send notifications to a room
-app.post("/notify", (req, res) => {
-  const { room, message } = req.body;
+// Send push notification
+app.post("/send-notification", async (req, res) => {
+  const payload = JSON.stringify({
+    title: "Hello from Safari!",
+    body: "You have a new notification!",
+  });
 
-  // Notify all users subscribed to this room
-  for (const userId in userSubscriptions) {
-    if (userSubscriptions[userId][room]) {
-      userSubscriptions[userId][room].forEach((subscription) => {
-        webPush
-          .sendNotification(subscription, JSON.stringify({ title: `${room}`, body: message }))
-          .catch((error) => console.error("Push notification error:", error));
-      });
-    }
-  }
+  subscriptions.forEach(subscription => {
+    webpush.sendNotification(subscription, payload).catch(err => console.error(err));
+  });
 
-  res.send({ message: `Notifications sent to ${room}!` });
+  res.json({ message: "Notification sent!" });
 });
 
-app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
-});
+// Start server
+app.listen(port, () => console.log(`Server running on port ${port}`));

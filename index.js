@@ -22,29 +22,46 @@ webpush.setVapidDetails(
   vapidKeys.privateKey
 );
 
-// Store subscriptions (in-memory for now)
-let subscriptions = [];
+const rooms = {
+  room1: [],
+  room2: [],
+  room3: [],
+};
 
-// Subscribe endpoint
+// ✅ API: Subscribe User to Room
 app.post("/subscribe", (req, res) => {
-  const subscription = req.body;
-  subscriptions.push(subscription);
-  res.status(201).json({ message: "Subscribed successfully!" });
+  const { subscription, room } = req.body;
+
+  if (!rooms[room]) {
+    return res.status(400).json({ error: "Invalid room" });
+  }
+
+  rooms[room].push(subscription);
+  res.status(201).json({ message: `Subscribed to ${room}` });
 });
 
-// Send push notification
+// ✅ API: Send Notification to Room
 app.post("/send-notification", async (req, res) => {
-  const payload = JSON.stringify({
-    title: "Hello from Safari!",
-    body: "You have a new notification!",
+  const { room, title, message } = req.body;
+  if (!rooms[room]) {
+    return res.status(400).json({ error: "Invalid room" });
+  }
+
+  const payload = JSON.stringify({ title, message });
+
+  rooms[room].forEach((subscription) => {
+    webpush.sendNotification(subscription, payload).catch((err) => console.error(err));
   });
 
-  subscriptions.forEach(subscription => {
-    webpush.sendNotification(subscription, payload).catch(err => console.error(err));
-  });
-
-  res.json({ message: "Notification sent!" });
+  res.status(200).json({ message: `Notification sent to ${room}` });
 });
 
-// Start server
-app.listen(port, () => console.log(`Server running on port ${port}`));
+app.post("/clearSubscription", (req, res) => {
+  Object.keys(rooms).forEach((room) => {
+    rooms[room] = [];
+  });
+  res.status(200).json({ message: "All subscriptions cleared" });
+});
+
+const PORT = 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

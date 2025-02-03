@@ -30,13 +30,14 @@ const rooms = {
 
 // ✅ API: Subscribe User to Room
 app.post("/subscribe", (req, res) => {
-  const { subscription, room } = req.body;
+  const { endpoint, p256dh, auth, room } = req.body;
 
   if (!rooms[room]) {
     return res.status(400).json({ error: "Invalid room" });
   }
 
-  rooms[room].push(subscription);
+  rooms[room].push({endpoint: endpoint, keys: {p256dh: p256dh, auth: auth}});
+  console.log({endpoint: endpoint, keys: {p256dh: p256dh, auth: auth}});
   res.status(201).json({ message: `Subscribed to ${room}` });
 });
 

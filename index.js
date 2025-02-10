@@ -48,7 +48,7 @@ app.post("/send-notification", async (req, res) => {
     return res.status(400).json({ error: "Invalid room" });
   }
 
-  const payload = JSON.stringify({ title, message });
+  const payload = JSON.stringify({ title, body: message, data: {url: 'http://localhost:3000'} });
 
   rooms[room].forEach((subscription) => {
     webpush.sendNotification(subscription, payload).catch((err) => console.error(err));
